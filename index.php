@@ -59,9 +59,8 @@ if (isset($_POST['submit'])) {
 				</div>
 			</div>
 		</form>
-		<?php echo $msg ?>;
-
+		<?php echo $msg ?>
 	</div>
-	
+
 </body>
 </html>
