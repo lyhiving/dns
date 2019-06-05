@@ -56,6 +56,8 @@ if ($is_debug) {
 	ini_set('display_errors', 1);
 	ini_set('display_startup_errors', 1);
 	error_reporting(E_ALL);
+}else{
+	error_reporting(0);
 }
 require_once dirname(__FILE__) . '/vendor/autoload.php';
 require_once dirname(__FILE__) . '/includes/netdns2-1.4/DNS2.php';
