@@ -21,23 +21,35 @@ if (!defined('HOST_KEY')) {
 use Aws\Exception\AwsException;
 use Aws\Lightsail\LightsailClient;
 use Cloudflare\Zone\Dns;
-$_GET['host'] = 'baidu.com';
+
 $case = isset($_GET['case']) ? $_GET['case']:'lightsail';
 $host = isset($_GET['host']) ? strtolower($_GET['host']):'';
 if(!$host) show_json(0, 'host参数不能为空！');
-if(!isset($_ENV['cfopt']) ||!$_ENV['cfopt']) show_json(0, '无Lightsail服务器配置！');
+if(!isset($_ENV['cfopt']) ||!$_ENV['cfopt']) show_json(0, '无Cloudflare配置！');
+
 if(!isset($_ENV['aws']) ||!$_ENV['aws'] || !$_ENV['aws']['lightsail']) show_json(0, '无Lightsail服务器配置！');
 if(!$_ENV['aws']['lightsail'][$host]) show_json(0, '无法找到指定服务器配置！');
 
-$cfopt = $_ENV['cfopt'];
+
 $lsopt = $_ENV['aws']['lightsail'][$host];
-if(isset($lsopt['realhost']) && $lsopt['realhost']) $host = $lsopt['realhost'];
+$usefake = false;
+if(isset($lsopt['realhost']) && $lsopt['realhost']){
+    $host = $lsopt['realhost'];
+    $usefake = true;
+} 
 
 $extract = new LayerShifter\TLDExtract\Extract();
 
 $domainfo = $extract->parse($host);
 $domain = $domainfo->getRegistrableDomain();
 if(!$domain) show_json(0, '域名格式不正确！');
+
+
+if(isset($_ENV['cfopt']['default']) && $_ENV['cfopt']['default']) $cfopt = $_ENV['cfopt']['default'];
+if(isset($_ENV['cfopt'][$domain]) && $_ENV['cfopt'][$domain]) $cfopt = $_ENV['cfopt'][$domain];
+if(!$cfopt) show_json(0, '无指定Cloudfare配置！');
+
+
 
 $client = new Aws\Lightsail\LightsailClient([
     'version' => $_ENV['aws']['version'],
@@ -83,11 +95,17 @@ try {
             show_json(0, '无法获取域名操作ID！ '.($ids->error ? "Message: ".$ids->error:""));
         }
         $dns = new Cloudflare\Zone\Dns($client);
+        $olds = $dns->list_records($ids->result[0]->id, 'A', $host);
+        if($olds && $olds->result){
+            foreach($olds->result as $k=>$v){
+                if($v->id) $dns->delete_record($ids->result[0]->id, $v->id);
+            }
+        }
         $change = $dns->create($ids->result[0]->id, 'A', $host, $ip, 120);
         if(!$change->success){
-            show_json(0, '更新域名IP出错！IP: '.$ip.' Host: '.$host.' GetHost: '.$_GET['host']." ".($change->error ? "Message: ".$change->error:""));
+            show_json(0, '更新域名IP出错！IP: '.$ip.($usefake ? '':' Host: '.$host).' ReqHost: '.$_GET['host']." ".($change->error ? "Message: ".$change->error:""));
         }
-        show_json(1, array('ip'=>$ip,'host'=>$host));
+        show_json(1, array('ip'=>$ip,'host'=>$usefake ? $_GET['host'] : $host,'reqhost'=>$_GET['host']));
     }catch (AwsException $e3) { show_json(0, 'Lightsail:  获取更新后的实例信息失败。Message: '.$e3->getMessage());} 
 
 } catch (AwsException $e0) {

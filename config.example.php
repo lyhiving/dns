@@ -14,14 +14,20 @@ $_ENV['aws'] = array(
     ),
     'lightsail' =>array(
         'baidu.com' => array( //you can use a fake domain
-            'realhost' => 'realdomain.com', //This is real domain
-            'vpsid' => 'S005', //Lightsail Instance ID
-            'ipid'  => 'IP005-3', //Lightsail Static IP ID, Must be same region with Lightsai Instance
+            'realhost' => 'xxx.realdomain.com', //This is real domain
+            'vpsid' => 'InstanceID', //Lightsail Instance ID
+            'ipid'  => 'IPID', //Lightsail Static IP ID, Must be same region with Lightsai Instance
             'region' => 'ap-northeast-1' // Lightsail Region
         )
     )
 );
 $_ENV['cfopt'] = array(
-    'email' =>'cfdomain', //Only use for lightsail problem
-    'key'   => 'cfkey' //Only use for lightsail problem
+    'default' => array( //Default Cloudflare
+        'email' =>'cfdomain', //Only use for lightsail problem
+        'key'   => 'cfkey' //Only use for lightsail problem
+    ),
+    'realdomain.com' => array(
+        'email' =>'cfdomain', //Only use for lightsail problem
+        'key'   => 'cfkey' //Only use for lightsail problem
+    )
 );
