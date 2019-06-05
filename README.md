@@ -2,11 +2,18 @@
 
 This project allows [Cloudflare Hosting Partner][1] to provide a panel for customers, which allows customers to have [CNAME setup][2] for **free**.
 
+Add Lightsai auto swtich IP and sync to Cloudflare
+
+**Useage:**    [you_web_server]/changeip.php?host=sub.domain
+
 [查看中文版本][3]
 
-[cf.tlo.xyz][4] is the site installed the stable version of this panel. The software is up-to-date and you can trust.
 
 ## Installation
+
+For tiny code, Plase do this comman befor you public 
+
+*composer install*
 
 If you don’t want to use the preinstalled panel above, you can install this panel on your server. [For more information, please see the Wiki][6].
 
@@ -66,7 +73,7 @@ This project was based on a [HOSTLOC topic][9].
 
 [1]:	https://www.cloudflare.com/partners/hosting-provider/
 [2]:	https://support.cloudflare.com/hc/en-us/articles/200168706-How-do-I-do-CNAME-setup-
-[3]:	https://github.com/ZE3kr/Cloudflare-CNAME-Setup/blob/master/README.zh.md
+[3]:	https://github.com/lyhiving/dns/blob/master/README.zh.md
 [4]:	https://cf.tlo.xyz
 [5]:	https://beta.cf.tlo.xyz
 [6]:	https://github.com/ZE3kr/Cloudflare-CNAME-Setup/wiki/Installation

@@ -2,9 +2,17 @@
 
 [Cloudflare Hosting Partner][1] 可以使用此项目为用户提供一个可视化的面板，可以让用户免费的使用 [CNAME 接入][2]。
 
-[cf.tlo.xyz][3] 是安装了这个面板的最新稳定版的网站，值得你的信任。
+
+增加了Lightsai切换IP自动同步到Cloudflare的功能。
+
+**用法：** [你的网站地址]/changeip.php?host=sub.domain
+
 
 ## 安装
+
+去掉众多组件，使用前请在根目录执行
+
+*composer install*
 
 如果你不想使用上述已经安装好了的面板，你可以在自己的服务器上安装。现有多种方式将其安装到服务器，[详情请参见 Wiki 中的安装方法][5]。
 

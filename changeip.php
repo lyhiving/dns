@@ -17,101 +17,119 @@ if (!defined('HOST_KEY')) {
     exit('Access Denied');
 }
 
-
 use Aws\Exception\AwsException;
 use Aws\Lightsail\LightsailClient;
 use Cloudflare\Zone\Dns;
 
-$case = isset($_GET['case']) ? $_GET['case']:'lightsail';
-$host = isset($_GET['host']) ? strtolower($_GET['host']):'';
-if(!$host) show_json(0, 'host参数不能为空！');
-if(!isset($_ENV['cfopt']) ||!$_ENV['cfopt']) show_json(0, '无Cloudflare配置！');
+$case = isset($_GET['case']) ? $_GET['case'] : 'lightsail';
+$host = isset($_GET['host']) ? strtolower($_GET['host']) : '';
+if (!$host) {
+    show_json(0, 'host参数不能为空！');
+}
 
-if(!isset($_ENV['aws']) ||!$_ENV['aws'] || !$_ENV['aws']['lightsail']) show_json(0, '无Lightsail服务器配置！');
-if(!$_ENV['aws']['lightsail'][$host]) show_json(0, '无法找到指定服务器配置！');
+if (!isset($_ENV['cfopt']) || !$_ENV['cfopt']) {
+    show_json(0, '无Cloudflare配置！');
+}
 
+if (!isset($_ENV['aws']) || !$_ENV['aws'] || !$_ENV['aws']['lightsail']) {
+    show_json(0, '无Lightsail服务器配置！');
+}
+
+if (!$_ENV['aws']['lightsail'][$host]) {
+    show_json(0, '无法找到指定服务器配置！');
+}
 
 $lsopt = $_ENV['aws']['lightsail'][$host];
 $usefake = false;
-if(isset($lsopt['realhost']) && $lsopt['realhost']){
+if (isset($lsopt['realhost']) && $lsopt['realhost']) {
     $host = $lsopt['realhost'];
     $usefake = true;
-} 
+}
 
 $extract = new LayerShifter\TLDExtract\Extract();
 
 $domainfo = $extract->parse($host);
 $domain = $domainfo->getRegistrableDomain();
-if(!$domain) show_json(0, '域名格式不正确！');
+if (!$domain) {
+    show_json(0, '域名格式不正确！');
+}
 
+if (isset($_ENV['cfopt']['default']) && $_ENV['cfopt']['default']) {
+    $cfopt = $_ENV['cfopt']['default'];
+}
 
-if(isset($_ENV['cfopt']['default']) && $_ENV['cfopt']['default']) $cfopt = $_ENV['cfopt']['default'];
-if(isset($_ENV['cfopt'][$domain]) && $_ENV['cfopt'][$domain]) $cfopt = $_ENV['cfopt'][$domain];
-if(!$cfopt) show_json(0, '无指定Cloudfare配置！');
+if (isset($_ENV['cfopt'][$domain]) && $_ENV['cfopt'][$domain]) {
+    $cfopt = $_ENV['cfopt'][$domain];
+}
 
-
+if (!$cfopt) {
+    show_json(0, '无指定Cloudfare配置！');
+}
 
 $client = new Aws\Lightsail\LightsailClient([
     'version' => $_ENV['aws']['version'],
     'region' => $lsopt['region'],
-    'credentials' => $_ENV['aws']['credentials']
+    'credentials' => $_ENV['aws']['credentials'],
 ]);
-
 
 try {
     $result = $client->getInstance([
-        'instanceName' => $lsopt['vpsid'], 
+        'instanceName' => $lsopt['vpsid'],
     ]);
 
-    if(!$result['instance']['isStaticIp']){
-        try{
+    if (!$result['instance']['isStaticIp']) {
+        try {
             $result = $client->AttachStaticIp([
-                'instanceName' => $lsopt['vpsid'], 
-                'staticIpName' => $lsopt['ipid'], 
-            ]); 
-        }catch (AwsException $e1) { show_json(0, 'Lightsail:  附加静态IP失败。Message: '.$e1->getMessage());}
-    }else{
-        try{
+                'instanceName' => $lsopt['vpsid'],
+                'staticIpName' => $lsopt['ipid'],
+            ]);
+        } catch (AwsException $e1) {show_json(0, 'Lightsail:  附加静态IP失败。Message: ' . $e1->getMessage());}
+    } else {
+        try {
             $result = $client->DetachStaticIp([
-                'instanceName' => $lsopt['vpsid'], 
-                'staticIpName' => $lsopt['ipid'], 
-            ]); 
-        }catch (AwsException $e2) { show_json(0, 'Lightsail:  分离静态IP失败。Message: '.$e2->getMessage()); }
+                'instanceName' => $lsopt['vpsid'],
+                'staticIpName' => $lsopt['ipid'],
+            ]);
+        } catch (AwsException $e2) {show_json(0, 'Lightsail:  分离静态IP失败。Message: ' . $e2->getMessage());}
     }
-    try{
+    try {
         $result = $client->getInstance([
-            'instanceName' => $lsopt['vpsid'],  
+            'instanceName' => $lsopt['vpsid'],
         ]);
         $ip = $result['instance']['publicIpAddress'];
-        if(!$ip) show_json(0, '无法获取新IP！');
+        if (!$ip) {
+            show_json(0, '无法获取新IP！');
+        }
 
         $client = new Cloudflare\Api($cfopt['email'], $cfopt['key']);
         $zones = new Cloudflare\Zone($client);
         $ids = $zones->zones($domain);
-        if(!$ids->success){
-            show_json(0, '获取域名信息失败或改域名不在指定Cloudfare账号下！ '.($ids->error ? "Message: ".$ids->error:""));
+        if (!$ids->success) {
+            show_json(0, '获取域名信息失败或改域名不在指定Cloudfare账号下！ ' . ($ids->error ? "Message: " . $ids->error : ""));
         }
-        if(!$ids->result ||!$ids->result[0] || !$ids->result[0]->id){
-            show_json(0, '无法获取域名操作ID！ '.($ids->error ? "Message: ".$ids->error:""));
+        if (!$ids->result || !$ids->result[0] || !$ids->result[0]->id) {
+            show_json(0, '无法获取域名操作ID！ ' . ($ids->error ? "Message: " . $ids->error : ""));
         }
         $dns = new Cloudflare\Zone\Dns($client);
         $olds = $dns->list_records($ids->result[0]->id, 'A', $host);
-        if($olds && $olds->result){
-            foreach($olds->result as $k=>$v){
-                if($v->id) $dns->delete_record($ids->result[0]->id, $v->id);
+        if ($olds && $olds->result) {
+            foreach ($olds->result as $k => $v) {
+                if ($v->id) {
+                    $dns->delete_record($ids->result[0]->id, $v->id);
+                }
+
             }
         }
         $change = $dns->create($ids->result[0]->id, 'A', $host, $ip, 120);
-        if(!$change->success){
-            show_json(0, '更新域名IP出错！IP: '.$ip.($usefake ? '':' Host: '.$host).' ReqHost: '.$_GET['host']." ".($change->error ? "Message: ".$change->error:""));
+        if (!$change->success) {
+            show_json(0, '更新域名IP出错！IP: ' . $ip . ($usefake ? '' : ' Host: ' . $host) . ' ReqHost: ' . $_GET['host'] . " " . ($change->error ? "Message: " . $change->error : ""));
         }
-        show_json(1, array('ip'=>$ip,'host'=>$usefake ? $_GET['host'] : $host,'reqhost'=>$_GET['host']));
-    }catch (AwsException $e3) { show_json(0, 'Lightsail:  获取更新后的实例信息失败。Message: '.$e3->getMessage());} 
+        show_json(1, array('ip' => $ip, 'host' => $usefake ? $_GET['host'] : $host, 'reqhost' => $_GET['host']));
+    } catch (AwsException $e3) {show_json(0, 'Lightsail:  获取更新后的实例信息失败。Message: ' . $e3->getMessage());}
 
 } catch (AwsException $e0) {
-    show_json(0, 'Lightsail:  首次获取实例信息失败。Message: '.$e0->getMessage());
+    show_json(0, 'Lightsail:  首次获取实例信息失败。Message: ' . $e0->getMessage());
 }
-
 
 /**
  * +----------------------------------------------------------
@@ -162,14 +180,13 @@ function dump($var, $label = null, $strict = true, $echo = true)
     }
 }
 
-
 function show_json($status = 1, $return = null)
 {
-    if(is_null($status)){
+    if (is_null($status)) {
         @header('Content-type: application/json; charset=UTF-8');
-        exit(is_array($return)?json_encode($return):$return);
-    }else{
-        $ret = array('status' => $status, 'result' =>  array());
+        exit(is_array($return) ? json_encode($return) : $return);
+    } else {
+        $ret = array('status' => $status, 'result' => array());
 
         if (!is_array($return)) {
             if ($return) {
@@ -183,8 +200,8 @@ function show_json($status = 1, $return = null)
 
         if (isset($return['url'])) {
             $ret['result']['url'] = $return['url'];
-       
+
         }
     }
     exit(json_encode($ret));
-} 
+}
