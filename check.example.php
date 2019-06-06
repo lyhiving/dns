@@ -20,8 +20,6 @@ function check_port($ip, $port,  $pushurl = '')
     socket_set_block($sock);
     $return = @socket_select($r = array($sock), $w = array($sock), $f = array($sock), 3);
     socket_close($sock);
-    var_dump($return);
-    exit;
     switch ($return) {
         case 2:
             echo "$ip:$port 关闭\n";
