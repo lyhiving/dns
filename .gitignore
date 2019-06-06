@@ -2,3 +2,4 @@ php.php
 config.php
 vendor/
 composer.lock
+check.php
