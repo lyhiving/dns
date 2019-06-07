@@ -1,7 +1,7 @@
 <?php
 
 $wxkey = 'FTQQ_PUSH_KEY';
-
+$serverid = 'SERVER_ID';
 if($wxkey=='FTQQ_PUSH_KEY'){
     exit('Please modify your own check.php base form check.example.php ');
 }
@@ -13,7 +13,7 @@ function main_handler($event, $context) {
 
 function check_port($ip, $port,  $pushurl = '')
 {
-    global $wxkey;
+    global $wxkey,$serverid;
     $sock = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
     socket_set_nonblock($sock);
     socket_connect($sock, $ip, $port);
@@ -22,22 +22,22 @@ function check_port($ip, $port,  $pushurl = '')
     socket_close($sock);
     switch ($return) {
         case 2:
-            echo "$ip:$port 关闭\n";
+            echo $serverid." $ip:$port 关闭\n";
             sc_send("远程端口已关闭。 位置：" . $ip . ":" . $port);
             break;
         case 1:
-            echo "$ip:$port 打开\n";
+            echo $serverid." $ip:$port 打开\n";
             break;
         case 0:
-            echo "$ip:$port 超时\n";
-            $title = "连接：$ip 端口：$port 出现超时";
+            echo $serverid." $ip:$port 超时\n";
+            $title = $serverid."连接：$ip 端口：$port 出现超时";
             $msg = '准备重启';
             if ($pushurl) {
                 $meta = wget($pushurl);
                 if (!$meta) {
                     $msg = '更改IP失败，连接失败。 URL: ' . $pushurl;
                 } else {
-                    $meta = json_decode($meta);
+                    $meta = json_decode($meta, true);
                     if (!$meta || !is_array($meta)) {
                         $msg = '更改IP失败，内容不正确。 URL: ' . $pushurl;
                     } else {
