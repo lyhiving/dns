@@ -84,6 +84,8 @@ $client = new Aws\Lightsail\LightsailClient([
     'credentials' => $_ENV['aws']['credentials'],
 ]);
 
+ini_set('display_errors',true);
+error_reporting(E_ALL);
 
 try {
     $result = $client->getInstance([
