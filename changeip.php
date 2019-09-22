@@ -101,6 +101,16 @@ try {
         $isstaticip = true;
     }
     try {
+        if($isstaticip){
+            $result = $client->DetachStaticIp([
+                'instanceName' => $lsopt['vpsid']
+            ]);
+        }else{
+            $result = $client->DetachStaticIp([
+                'instanceName' => $lsopt['vpsid'],
+                'staticIpName' => $lsopt['ipid']
+            ]);
+        }
         $result = $isstaticip ? $client->DetachStaticIp([
             'instanceName' => $lsopt['vpsid']
         ]):$client->DetachStaticIp([
