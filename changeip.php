@@ -96,9 +96,10 @@ try {
                 'instanceName' => $lsopt['vpsid'],
                 'staticIpName' => $lsopt['ipid'],
             ]);
-            $isstaticip = true;
         } catch (AwsException $e1) {show_json(0, 'Lightsail:  附加静态IP失败。Message: ' . $e1->getMessage());}
-    }  
+    }else{
+        $isstaticip = true;
+    }
     try {
         $result = $isstaticip ? $client->DetachStaticIp([
             'instanceName' => $lsopt['vpsid']
