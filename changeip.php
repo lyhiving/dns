@@ -89,6 +89,8 @@ try {
     $result = $client->getInstance([
         'instanceName' => $lsopt['vpsid'],
     ]);
+    dump($result['instance']);
+    exit;
     if (!$result['instance']['isStaticIp']) {
         try {
             $result = $client->AttachStaticIp([
