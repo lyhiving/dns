@@ -23,6 +23,7 @@ use Cloudflare\Zone\Dns;
 
 $case = isset($_GET['case']) ? $_GET['case'] : 'lightsail';
 $host = isset($_GET['host']) ? strtolower($_GET['host']) : '';
+
 if (!$host) {
     show_json(0, 'host参数不能为空！');
 }
@@ -45,6 +46,7 @@ if (isset($lsopt['realhost']) && $lsopt['realhost']) {
     $host = $lsopt['realhost'];
     $usefake = true;
 }
+$ihost = $usefake ? $_GET['host'] : $host;
 
 $extract = new LayerShifter\TLDExtract\Extract();
 
@@ -59,24 +61,32 @@ if (isset($_ENV['cfopt']['default']) && $_ENV['cfopt']['default']) {
 }
 
 if (isset($_ENV['cfopt'][$domain]) && $_ENV['cfopt'][$domain]) {
-    $cfopt = $_ENV['cfopt'][$domain];
+    $cfopt = $_ENV['cfopt'][$domain]; 
 }
 
-if (!$cfopt) {
-    show_json(0, '无指定Cloudfare配置！');
+if (isset($_ENV['cfpopt']['default']) && $_ENV['cfpopt']['default']) {
+    $cfpopt = $_ENV['cfpopt']['default'];
 }
 
+if (isset($_ENV['cfpopt'][$domain]) && $_ENV['cfpopt'][$domain]) {
+    $cfpopt = $_ENV['cfpopt'][$domain]; 
+}
+
+if (!$cfopt && !$cfpopt) {
+    show_json(0, '无指定Cloudfare/Cloudfare Partner配置！');
+}
+ 
 $client = new Aws\Lightsail\LightsailClient([
     'version' => $_ENV['aws']['version'],
     'region' => $lsopt['region'],
     'credentials' => $_ENV['aws']['credentials'],
 ]);
 
+
 try {
     $result = $client->getInstance([
         'instanceName' => $lsopt['vpsid'],
     ]);
-
     if (!$result['instance']['isStaticIp']) {
         try {
             $result = $client->AttachStaticIp([
@@ -84,14 +94,13 @@ try {
                 'staticIpName' => $lsopt['ipid'],
             ]);
         } catch (AwsException $e1) {show_json(0, 'Lightsail:  附加静态IP失败。Message: ' . $e1->getMessage());}
-    } else {
-        try {
-            $result = $client->DetachStaticIp([
-                'instanceName' => $lsopt['vpsid'],
-                'staticIpName' => $lsopt['ipid'],
-            ]);
-        } catch (AwsException $e2) {show_json(0, 'Lightsail:  分离静态IP失败。Message: ' . $e2->getMessage());}
-    }
+    }  
+    try {
+        $result = $client->DetachStaticIp([
+            'instanceName' => $lsopt['vpsid'],
+            'staticIpName' => $lsopt['ipid'],
+        ]);
+    } catch (AwsException $e2) {show_json(0, 'Lightsail:  分离静态IP失败。Message: ' . $e2->getMessage());}
     try {
         $result = $client->getInstance([
             'instanceName' => $lsopt['vpsid'],
@@ -100,36 +109,94 @@ try {
         if (!$ip) {
             show_json(0, '无法获取新IP！');
         }
-
-        $client = new Cloudflare\Api($cfopt['email'], $cfopt['key']);
-        $zones = new Cloudflare\Zone($client);
-        $ids = $zones->zones($domain);
-        if (!$ids->success) {
-            show_json(0, '获取域名信息失败或改域名不在指定Cloudfare账号下！ ' . ($ids->error ? "Message: " . $ids->error : ""));
-        }
-        if (!$ids->result || !$ids->result[0] || !$ids->result[0]->id) {
-            show_json(0, '无法获取域名操作ID！ ' . ($ids->error ? "Message: " . $ids->error : ""));
-        }
-        $dns = new Cloudflare\Zone\Dns($client);
-        $olds = $dns->list_records($ids->result[0]->id, 'A', $host);
-        if ($olds && $olds->result) {
-            foreach ($olds->result as $k => $v) {
-                if ($v->id) {
-                    $dns->delete_record($ids->result[0]->id, $v->id);
-                }
-
+// dump($ip);
+    switch($lsopt['dnstype']){
+        case "cf":
+            $client = new Cloudflare\Api($cfopt['email'], $cfopt['key']);
+            $zones = new Cloudflare\Zone($client);
+            $ids = $zones->zones($domain);
+            if (!$ids->success) {
+                show_json(0, '获取域名信息失败或改域名不在指定Cloudfare账号下！ ' . ($ids->error ? "Message: " . $ids->error : ""));
             }
-        }
-        $change = $dns->create($ids->result[0]->id, 'A', $host, $ip, 120);
-        if (!$change->success) {
-            show_json(0, '更新域名IP出错！IP: ' . $ip . ($usefake ? '' : ' Host: ' . $host) . ' ReqHost: ' . $_GET['host'] . " " . ($change->error ? "Message: " . $change->error : ""));
-        }
-        show_json(1, array('ip' => $ip, 'host' => $usefake ? $_GET['host'] : $host, 'reqhost' => $_GET['host']));
+            if (!$ids->result || !$ids->result[0] || !$ids->result[0]->id) {
+                show_json(0, '无法获取域名操作ID！ ' . ($ids->error ? "Message: " . $ids->error : ""));
+            }
+            $dns = new Cloudflare\Zone\Dns($client);
+            $olds = $dns->list_records($ids->result[0]->id, 'A', $host);
+            if ($olds && $olds->result) {
+                foreach ($olds->result as $k => $v) {
+                    if ($v->id) {
+                        $dns->delete_record($ids->result[0]->id, $v->id);
+                    }
+
+                }
+            }
+            $change = $dns->create($ids->result[0]->id, 'A', $host, $ip, 120);
+            if (!$change->success) {
+                show_json(0, '更新域名IP出错！IP: ' . $ip . ($usefake ? '' : ' Host: ' . $host) . ' ReqHost: ' . $_GET['host'] . " " . ($change->error ? "Message: " . $change->error : ""));
+            }
+            show_json(1, array('ip' => $ip, 'host' => $ihost, 'reqhost' => $_GET['host']));
+        break;
+        case "cfp":
+            require_once 'cloudflare.class.php';
+            $key = new \Cloudflare\API\Auth\APIKey($cfpopt['email'], $cfpopt['key']);
+            $adapter = new Cloudflare\API\Adapter\Guzzle($key);
+            $dns = new \Cloudflare\API\Endpoints\DNS($adapter);
+            $zones = new \Cloudflare\API\Endpoints\Zones($adapter);
+            try {
+                $zoneID = $zones->getZoneID($domain);
+                $dnsresult_data = $dns->listRecords($zoneID);
+                $recordid = 0;
+                if($dnsresult_data){
+                    $result = $dnsresult_data->result; 
+                    if($result){
+                        foreach($result as $k =>$v){
+                            if($v->name==$host){
+                                $recordid = $v->id;
+                                $record = $v;
+                                break;
+                            }
+                        }
+                    }
+                }else{
+                    $dnsresult_data = array();
+                }
+                $options = ['type' => 'A', 'name' => $host, 'content' => $ip, 'ttl' => 120, 'priority' => 10, 'proxied' => false, 'data' => []];
+                if($recordid){
+                    try {
+                        if ($dns->updateRecordDetails($zoneID, $recordid, $options)) {
+                            show_json(1, array('ip' => $ip, 'host' => $ihost, 'reqhost' => $_GET['host']));
+                        } else {
+                            show_json(0, '更新IP失败. Host:'.$ihost.' IP:'.$ip);
+                        }
+                    } catch (Exception $e) {
+                        show_json(0, '更新IP失败！ ' . ($e->getMessage() ? "Message: " . $e->getMessage() : ""));
+                    }
+                }else{
+                    try {
+                        $dns = $adapter->post('zones/' . $zoneID . '/dns_records', $options);
+                        $dns = json_decode($dns->getBody());
+                        if (isset($dns->result->id)) {
+                            show_json(1, array('ip' => $ip, 'host' => $ihost, 'reqhost' => $_GET['host']));
+                        } else {
+                            show_json(0, '创建IP失败. Host:'.$ihost.' IP:'.$ip);
+                        }
+                    } catch (Exception $e) {
+                        show_json(0, '创建IP失败！ ' . ($e->getMessage() ? "Message: " . $e->getMessage() : ""));
+                    }
+                }
+            } catch (Exception $e) {
+                show_json(0, '获取域名CFP信息失败或改域名不在指定Cloudfare合作账号下！ ' . ($e->getMessage() ? "Message: " . $e->getMessage() : ""));
+            } 
+            break;
+    }
+
     } catch (AwsException $e3) {show_json(0, 'Lightsail:  获取更新后的实例信息失败。Message: ' . $e3->getMessage());}
 
 } catch (AwsException $e0) {
     show_json(0, 'Lightsail:  首次获取实例信息失败。Message: ' . $e0->getMessage());
 }
+
 
 /**
  * +----------------------------------------------------------

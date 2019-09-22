@@ -17,17 +17,29 @@ $_ENV['aws'] = array(
             'realhost' => 'xxx.realdomain.com', //This is real domain
             'vpsid' => 'InstanceID', //Lightsail Instance ID
             'ipid'  => 'IPID', //Lightsail Static IP ID, Must be same region with Lightsai Instance
-            'region' => 'ap-northeast-1' // Lightsail Region
+            'region' => 'ap-northeast-1', // Lightsail Region 
+            'dnstype' =>'cf' //realhost or domain dns type. Support cloudflare->cf, AWS -> aws
         )
     )
 );
-$_ENV['cfopt'] = array(
+$_ENV['cfopt'] = array(//CloudFlare Option
     'default' => array( //Default Cloudflare
-        'email' =>'cfdomain', //Only use for lightsail problem
-        'key'   => 'cfkey' //Only use for lightsail problem
+        'email' =>'cfdomain', //CF Account ID
+        'key'   => 'cfkey' //MUST BE CF account global KEY
     ),
     'realdomain.com' => array(
-        'email' =>'cfdomain', //Only use for lightsail problem
-        'key'   => 'cfkey' //Only use for lightsail problem
+        'email' =>'cfdomain', //CF Account ID
+        'key'   => 'cfkey' //MUST BE CF account global KEY
+    )
+);
+
+$_ENV['cfpopt'] = array(//CloudFlare Partner Option
+    'default' => array( //Default Cloudflare
+        'email' =>'cfdomain', //CF Account ID
+        'key'   => 'cfkey' //MUST BE CF account global KEY
+    ),
+    'realdomain.com' => array(
+        'email' =>'cfdomain', //CF Account ID
+        'key'   => 'cfkey' //MUST BE CF account global KEY
     )
 );
