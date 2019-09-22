@@ -1,6 +1,6 @@
 <?php
 /**
- * checker->lightsail new ip -> cloudfare dns
+ * checker->lightsail new ip -> cloudfare/cloudflare partner dns
  *
  * @file    $Source: /README.md  $
  * @package core
