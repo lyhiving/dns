@@ -8,6 +8,7 @@
  *
  */
 
+
 $starttime = microtime(true);
 $page_title = '';
 $version = '1.0.0';
@@ -23,6 +24,7 @@ use Cloudflare\Zone\Dns;
 
 $case = isset($_GET['case']) ? $_GET['case'] : 'lightsail';
 $host = isset($_GET['host']) ? strtolower($_GET['host']) : '';
+$callback = isset($_GET['callback']) ? urldecode($_GET['callback']) : '';
 
 if (!$host) {
     show_json(0, 'host参数不能为空！');
@@ -249,6 +251,15 @@ function dump($var, $label = null, $strict = true, $echo = true)
 
 function show_json($status = 1, $return = null)
 {
+    global $callback;
+    if($callback){ //回调就增加IP和hostname
+        if($status){
+            $cip = file_get_contents(str_replace(array("[ip]","[host]","[reqhost]"), array($return['ip'],$return['host'],$return['reqhost']), $callback));
+            $return['callback'] = $cip;
+        }else{
+            $cip = file_get_contents(str_replace(array("[errmsg]"), array($return), $callback));
+        } 
+    }
     if (is_null($status)) {
         @header('Content-type: application/json; charset=UTF-8');
         exit(is_array($return) ? json_encode($return) : $return);
