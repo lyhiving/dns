@@ -48,6 +48,7 @@ if (isset($lsopt['realhost']) && $lsopt['realhost']) {
     $usefake = true;
 }
 $_ENV['ihost'] = $ihost = $usefake ? $_GET['host'] : $host;
+$_ENV['host'] = $host;
 
 $extract = new LayerShifter\TLDExtract\Extract();
 
@@ -260,7 +261,7 @@ function show_json($status = 1, $return = null)
     if (defined('PUSHME_KEY')) {
         if ($status) {
             $title = $_ENV['ihost'] . "成功切换IP";
-            $content = "新IP地址：" . $ip . PHP_EOL . "解析域名：" . $_ENV['ihost'] . PHP_EOL . ($_GET['host'] == $_ENV['ihost'] ? "" : "请求域名" . $_GET['host']);
+            $content = "新IP地址：" . $_ENV['ip']  . PHP_EOL . "解析域名：" . $_ENV['host'] . PHP_EOL . ($_GET['host'] == $_ENV['host'] ? "" : "请求域名" . $_GET['host']);
         } else {
             $title = $_ENV['ihost'] . "切换IP失败";
             $content = $return;
