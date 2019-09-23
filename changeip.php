@@ -261,7 +261,7 @@ function show_json($status = 1, $return = null)
     if (defined('PUSHME_KEY')) {
         if ($status) {
             $title = $_ENV['ihost'] . "成功切换IP";
-            $content = "新IP地址：" . $return['ip']  . PHP_EOL . "解析域名：" . $return['host'] . PHP_EOL . ($return['host'] == $return['reqhost'] ? "" : "请求域名" . $return['reqhost']);
+            $content = "新IP地址：" . $return['ip']  . PHP_EOL . "解析域名：" . $return['host'] . PHP_EOL . ($return['host'] == $return['reqhost'] ? "" : "请求域名" . $return['reqhost']).PHP_EOL ."（成功更新IP并不意味可以正常访问，如约10分钟后无IP更新提示则说明已生效。期间可以测试访问）";
         } else {
             $title = $_ENV['ihost'] . "切换IP失败";
             $content = $return;
