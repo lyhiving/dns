@@ -8,7 +8,6 @@
  *
  */
 
-
 $starttime = microtime(true);
 $page_title = '';
 $version = '1.0.0';
@@ -48,7 +47,7 @@ if (isset($lsopt['realhost']) && $lsopt['realhost']) {
     $host = $lsopt['realhost'];
     $usefake = true;
 }
-$ihost = $usefake ? $_GET['host'] : $host;
+$_ENV['ihost'] = $ihost = $usefake ? $_GET['host'] : $host;
 
 $extract = new LayerShifter\TLDExtract\Extract();
 
@@ -63,7 +62,7 @@ if (isset($_ENV['cfopt']['default']) && $_ENV['cfopt']['default']) {
 }
 
 if (isset($_ENV['cfopt'][$domain]) && $_ENV['cfopt'][$domain]) {
-    $cfopt = $_ENV['cfopt'][$domain]; 
+    $cfopt = $_ENV['cfopt'][$domain];
 }
 
 if (isset($_ENV['cfpopt']['default']) && $_ENV['cfpopt']['default']) {
@@ -71,19 +70,18 @@ if (isset($_ENV['cfpopt']['default']) && $_ENV['cfpopt']['default']) {
 }
 
 if (isset($_ENV['cfpopt'][$domain]) && $_ENV['cfpopt'][$domain]) {
-    $cfpopt = $_ENV['cfpopt'][$domain]; 
+    $cfpopt = $_ENV['cfpopt'][$domain];
 }
 
 if (!$cfopt && !$cfpopt) {
     show_json(0, '无指定Cloudfare/Cloudfare Partner配置！');
 }
- 
+
 $client = new Aws\Lightsail\LightsailClient([
     'version' => $_ENV['aws']['version'],
     'region' => $lsopt['region'],
     'credentials' => $_ENV['aws']['credentials'],
 ]);
-
 
 try {
     $result = $client->getInstance([
@@ -96,7 +94,7 @@ try {
                 'staticIpName' => $lsopt['ipid'],
             ]);
         } catch (AwsException $e1) {show_json(0, 'Lightsail:  附加静态IP失败。Message: ' . $e1->getMessage());}
-    }  
+    }
     try {
         $result = $client->DetachStaticIp([
             'instanceName' => $lsopt['vpsid'],
@@ -112,93 +110,92 @@ try {
             show_json(0, '无法获取新IP！');
         }
 // dump($ip);
-    switch($lsopt['dnstype']){
-        case "cf":
-            $client = new Cloudflare\Api($cfopt['email'], $cfopt['key']);
-            $zones = new Cloudflare\Zone($client);
-            $ids = $zones->zones($domain);
-            if (!$ids->success) {
-                show_json(0, '获取域名信息失败或改域名不在指定Cloudfare账号下！ ' . ($ids->error ? "Message: " . $ids->error : ""));
-            }
-            if (!$ids->result || !$ids->result[0] || !$ids->result[0]->id) {
-                show_json(0, '无法获取域名操作ID！ ' . ($ids->error ? "Message: " . $ids->error : ""));
-            }
-            $dns = new Cloudflare\Zone\Dns($client);
-            $olds = $dns->list_records($ids->result[0]->id, 'A', $host);
-            if ($olds && $olds->result) {
-                foreach ($olds->result as $k => $v) {
-                    if ($v->id) {
-                        $dns->delete_record($ids->result[0]->id, $v->id);
-                    }
-
+        switch ($lsopt['dnstype']) {
+            case "cf":
+                $client = new Cloudflare\Api($cfopt['email'], $cfopt['key']);
+                $zones = new Cloudflare\Zone($client);
+                $ids = $zones->zones($domain);
+                if (!$ids->success) {
+                    show_json(0, '获取域名信息失败或改域名不在指定Cloudfare账号下！ ' . ($ids->error ? "Message: " . $ids->error : ""));
                 }
-            }
-            $change = $dns->create($ids->result[0]->id, 'A', $host, $ip, 120);
-            if (!$change->success) {
-                show_json(0, '更新域名IP出错！IP: ' . $ip . ($usefake ? '' : ' Host: ' . $host) . ' ReqHost: ' . $_GET['host'] . " " . ($change->error ? "Message: " . $change->error : ""));
-            }
-            show_json(1, array('ip' => $ip, 'host' => $ihost, 'reqhost' => $_GET['host']));
-        break;
-        case "cfp":
-            require_once 'cloudflare.class.php';
-            $key = new \Cloudflare\API\Auth\APIKey($cfpopt['email'], $cfpopt['key']);
-            $adapter = new Cloudflare\API\Adapter\Guzzle($key);
-            $dns = new \Cloudflare\API\Endpoints\DNS($adapter);
-            $zones = new \Cloudflare\API\Endpoints\Zones($adapter);
-            try {
-                $zoneID = $zones->getZoneID($domain);
-                $dnsresult_data = $dns->listRecords($zoneID);
-                $recordid = 0;
-                if($dnsresult_data){
-                    $result = $dnsresult_data->result; 
-                    if($result){
-                        foreach($result as $k =>$v){
-                            if($v->name==$host){
-                                $recordid = $v->id;
-                                $record = $v;
-                                break;
+                if (!$ids->result || !$ids->result[0] || !$ids->result[0]->id) {
+                    show_json(0, '无法获取域名操作ID！ ' . ($ids->error ? "Message: " . $ids->error : ""));
+                }
+                $dns = new Cloudflare\Zone\Dns($client);
+                $olds = $dns->list_records($ids->result[0]->id, 'A', $host);
+                if ($olds && $olds->result) {
+                    foreach ($olds->result as $k => $v) {
+                        if ($v->id) {
+                            $dns->delete_record($ids->result[0]->id, $v->id);
+                        }
+
+                    }
+                }
+                $change = $dns->create($ids->result[0]->id, 'A', $host, $ip, 120);
+                if (!$change->success) {
+                    show_json(0, '更新域名IP出错！IP: ' . $ip . ($usefake ? '' : ' Host: ' . $host) . ' ReqHost: ' . $_GET['host'] . " " . ($change->error ? "Message: " . $change->error : ""));
+                }
+                show_json(1, array('ip' => $ip, 'host' => $ihost, 'reqhost' => $_GET['host']));
+                break;
+            case "cfp":
+                require_once 'cloudflare.class.php';
+                $key = new \Cloudflare\API\Auth\APIKey($cfpopt['email'], $cfpopt['key']);
+                $adapter = new Cloudflare\API\Adapter\Guzzle($key);
+                $dns = new \Cloudflare\API\Endpoints\DNS($adapter);
+                $zones = new \Cloudflare\API\Endpoints\Zones($adapter);
+                try {
+                    $zoneID = $zones->getZoneID($domain);
+                    $dnsresult_data = $dns->listRecords($zoneID);
+                    $recordid = 0;
+                    if ($dnsresult_data) {
+                        $result = $dnsresult_data->result;
+                        if ($result) {
+                            foreach ($result as $k => $v) {
+                                if ($v->name == $host) {
+                                    $recordid = $v->id;
+                                    $record = $v;
+                                    break;
+                                }
                             }
                         }
+                    } else {
+                        $dnsresult_data = array();
                     }
-                }else{
-                    $dnsresult_data = array();
-                }
-                $options = ['type' => 'A', 'name' => $host, 'content' => $ip, 'ttl' => 120, 'priority' => 10, 'proxied' => false, 'data' => []];
-                if($recordid){
-                    try {
-                        if ($dns->updateRecordDetails($zoneID, $recordid, $options)) {
-                            show_json(1, array('ip' => $ip, 'host' => $ihost, 'reqhost' => $_GET['host']));
-                        } else {
-                            show_json(0, '更新IP失败. Host:'.$ihost.' IP:'.$ip);
+                    $options = ['type' => 'A', 'name' => $host, 'content' => $ip, 'ttl' => 120, 'priority' => 10, 'proxied' => false, 'data' => []];
+                    if ($recordid) {
+                        try {
+                            if ($dns->updateRecordDetails($zoneID, $recordid, $options)) {
+                                show_json(1, array('ip' => $ip, 'host' => $ihost, 'reqhost' => $_GET['host']));
+                            } else {
+                                show_json(0, '更新IP失败. Host:' . $ihost . ' IP:' . $ip);
+                            }
+                        } catch (Exception $e) {
+                            show_json(0, '更新IP失败！ ' . ($e->getMessage() ? "Message: " . $e->getMessage() : ""));
                         }
-                    } catch (Exception $e) {
-                        show_json(0, '更新IP失败！ ' . ($e->getMessage() ? "Message: " . $e->getMessage() : ""));
-                    }
-                }else{
-                    try {
-                        $dns = $adapter->post('zones/' . $zoneID . '/dns_records', $options);
-                        $dns = json_decode($dns->getBody());
-                        if (isset($dns->result->id)) {
-                            show_json(1, array('ip' => $ip, 'host' => $ihost, 'reqhost' => $_GET['host']));
-                        } else {
-                            show_json(0, '创建IP失败. Host:'.$ihost.' IP:'.$ip);
+                    } else {
+                        try {
+                            $dns = $adapter->post('zones/' . $zoneID . '/dns_records', $options);
+                            $dns = json_decode($dns->getBody());
+                            if (isset($dns->result->id)) {
+                                show_json(1, array('ip' => $ip, 'host' => $ihost, 'reqhost' => $_GET['host']));
+                            } else {
+                                show_json(0, '创建IP失败. Host:' . $ihost . ' IP:' . $ip);
+                            }
+                        } catch (Exception $e) {
+                            show_json(0, '创建IP失败！ ' . ($e->getMessage() ? "Message: " . $e->getMessage() : ""));
                         }
-                    } catch (Exception $e) {
-                        show_json(0, '创建IP失败！ ' . ($e->getMessage() ? "Message: " . $e->getMessage() : ""));
                     }
+                } catch (Exception $e) {
+                    show_json(0, '获取域名CFP信息失败或改域名不在指定Cloudfare合作账号下！ ' . ($e->getMessage() ? "Message: " . $e->getMessage() : ""));
                 }
-            } catch (Exception $e) {
-                show_json(0, '获取域名CFP信息失败或改域名不在指定Cloudfare合作账号下！ ' . ($e->getMessage() ? "Message: " . $e->getMessage() : ""));
-            } 
-            break;
-    }
+                break;
+        }
 
     } catch (AwsException $e3) {show_json(0, 'Lightsail:  获取更新后的实例信息失败。Message: ' . $e3->getMessage());}
 
 } catch (AwsException $e0) {
     show_json(0, 'Lightsail:  首次获取实例信息失败。Message: ' . $e0->getMessage());
 }
-
 
 /**
  * +----------------------------------------------------------
@@ -252,13 +249,23 @@ function dump($var, $label = null, $strict = true, $echo = true)
 function show_json($status = 1, $return = null)
 {
     global $callback;
-    if($callback){ //回调就增加IP和hostname
-        if($status){
-            $cip = file_get_contents(str_replace(array("[ip]","[host]","[reqhost]"), array($return['ip'],$return['host'],$return['reqhost']), $callback));
+    if ($callback) { //回调就增加IP和hostname
+        if ($status) {
+            $cip = file_get_contents(str_replace(array("[ip]", "[host]", "[reqhost]"), array($return['ip'], $return['host'], $return['reqhost']), $callback));
             $return['callback'] = $cip;
-        }else{
+        } else {
             $cip = file_get_contents(str_replace(array("[errmsg]"), array($return), $callback));
-        } 
+        }
+    }
+    if (defined('PUSHME_KEY')) {
+        if ($status) {
+            $title = $_ENV['ihost'] . "成功切换IP";
+            $content = "新IP地址：" . $ip . PHP_EOL . "解析域名：" . $_ENV['ihost'] . PHP_EOL . ($_GET['host'] == $_ENV['ihost'] ? "" : "请求域名" . $_GET['host']);
+        } else {
+            $title = $_ENV['ihost'] . "切换IP失败";
+            $content = $return;
+        }
+        pushme($title, $content);
     }
     if (is_null($status)) {
         @header('Content-type: application/json; charset=UTF-8');
@@ -282,4 +289,27 @@ function show_json($status = 1, $return = null)
         }
     }
     exit(json_encode($ret));
+}
+
+function pushme($title, $content = '', $key = '')
+{
+    if (!$key) {
+        $key = PUSHME_KEY;
+    }
+
+    $postdata = http_build_query(
+        array(
+            'title' => $title,
+            'content' => $content,
+        )
+    );
+    $opts = array('http' => array(
+        'method' => 'POST',
+        'header' => 'Content-type: application/x-www-form-urlencoded',
+        'content' => $postdata,
+    ),
+    );
+    $context = stream_context_create($opts);
+    return $result = file_get_contents('https://pushme.tedx.net/' . $key . '.send', false, $context);
+
 }
