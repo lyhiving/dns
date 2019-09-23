@@ -261,7 +261,7 @@ function show_json($status = 1, $return = null)
     if (defined('PUSHME_KEY')) {
         if ($status) {
             $title = $_ENV['ihost'] . "成功切换IP";
-            $content = "新IP地址：" . $_ENV['ip']  . PHP_EOL . "解析域名：" . $_ENV['host'] . PHP_EOL . ($_GET['host'] == $_ENV['host'] ? "" : "请求域名" . $_GET['host']);
+            $content = "新IP地址：" . $return['ip']  . PHP_EOL . "解析域名：" . $return['host'] . PHP_EOL . ($return['host'] == $return['reqhost'] ? "" : "请求域名" . $return['reqhost']);
         } else {
             $title = $_ENV['ihost'] . "切换IP失败";
             $content = $return;
