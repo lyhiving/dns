@@ -265,7 +265,10 @@ function show_json($status = 1, $return = null)
             $title = $_ENV['ihost'] . "切换IP失败";
             $content = $return;
         }
-        pushme($title, $content);
+        $pushret = pushme($title, $content);
+        if($status){
+            $return['push'] = $pushret;
+        }
     }
     if (is_null($status)) {
         @header('Content-type: application/json; charset=UTF-8');
