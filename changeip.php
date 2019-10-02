@@ -23,7 +23,7 @@ use Cloudflare\Zone\Dns;
 
 $case = isset($_GET['case']) ? $_GET['case'] : 'lightsail';
 $host = isset($_GET['host']) ? strtolower($_GET['host']) : '';
-$callback = isset($_GET['callback']) ? urldecode($_GET['callback']) : '';
+
 
 if (!$host) {
     show_json(0, $host.'host参数不能为空！');
@@ -48,6 +48,7 @@ if (isset($lsopt['realhost']) && $lsopt['realhost']) {
     $usefake = true;
 }
 $dnstype = $lsopt['dnstype'];
+$callback = isset($lsopt['callback']) ? $lsopt['callback'] : '';
 $dnsopt = $_ENV[$dnstype.'opt'];
 
 
