@@ -255,10 +255,10 @@ function dump($var, $label = null, $strict = true, $echo = true)
 
 function show_json($status = 1, $return = null)
 {
-    global $callback;
+    global $callback, $host;
     if ($callback) { //回调就增加IP和hostname
         if ($status) {
-            $cip = file_get_contents(str_replace(array("[ip]", "[host]", "[reqhost]"), array($return['ip'], $return['host'], $return['reqhost']), $callback));
+            $cip = file_get_contents(str_replace(array("[ip]", "[host]", "[reqhost]"), array($return['ip'], $return['host'], $host), $callback));
             $return['callback'] = $cip;
         } else {
             $cip = file_get_contents(str_replace(array("[errmsg]"), array($return), $callback));
@@ -267,7 +267,7 @@ function show_json($status = 1, $return = null)
     if (defined('PUSHME_KEY')) {
         if ($status) {
             $title = $_ENV['ihost'] . "成功切换IP";
-            $content = "新IP地址：" . $return['ip']  . PHP_EOL . "解析域名：" . $return['host'] . PHP_EOL . ($return['host'] == $return['reqhost'] ? "" : "请求域名" . $return['reqhost']).PHP_EOL ."（成功更新IP并不意味可以正常访问，如约10分钟后无IP更新提示则说明已生效。期间可以测试访问）";
+            $content = "新IP地址：" . $return['ip']  . PHP_EOL . "解析域名：" . $return['host'] . PHP_EOL . ($return['host'] == $host ? "" : "请求域名" . $host).PHP_EOL ."（成功更新IP并不意味可以正常访问，如约10分钟后无IP更新提示则说明已生效。期间可以测试访问）";
         } else {
             $title = $_ENV['ihost'] . "切换IP失败";
             $content = $return;
