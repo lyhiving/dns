@@ -44,3 +44,11 @@ $_ENV['cfpopt'] = array(//CloudFlare Partner Option
         'key'   => 'cfkey' //MUST BE CF account global KEY
     )
 );
+
+$_ENV['namecheapopt'] = array(//Namecheap
+    'domain.com'=> array( //speicaildomain or default
+        'username' =>'username', //Namecheap username
+        'key'   => 'APIKEY', //Namecheap API KEY
+        'ip'    => '1.1.1.x'  //If no set IP will get the server IP automatic. Local TEST use namecheap.ip file content
+    )
+);

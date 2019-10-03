@@ -17,20 +17,17 @@ if (!defined('HOST_KEY')) {
     exit('Access Denied');
 }
 
+
 use Aws\Exception\AwsException;
 use Aws\Lightsail\LightsailClient;
 use Cloudflare\Zone\Dns;
+$extract = new LayerShifter\TLDExtract\Extract();
 
 $case = isset($_GET['case']) ? $_GET['case'] : 'lightsail';
 $host = isset($_GET['host']) ? strtolower($_GET['host']) : '';
 
-
 if (!$host) {
     show_json(0, $host.'host参数不能为空！');
-}
-
-if (!isset($_ENV['cfopt']) || !$_ENV['cfopt']) {
-    show_json(0, $host.'无Cloudflare配置！');
 }
 
 if (!isset($_ENV['aws']) || !$_ENV['aws'] || !$_ENV['aws']['lightsail']) {
@@ -51,11 +48,8 @@ $dnstype = $lsopt['dnstype'];
 $callback = isset($lsopt['callback']) ? $lsopt['callback'] : '';
 $dnsopt = $_ENV[$dnstype.'opt'];
 
-
 $_ENV['ihost'] = $ihost = $usefake ? $_GET['host'] : $host;
 $_ENV['host'] = $host;
-
-$extract = new LayerShifter\TLDExtract\Extract();
 
 $domainfo = $extract->parse($host);
 $domain = $domainfo->getRegistrableDomain();
@@ -75,8 +69,8 @@ if (!$dnsconfig) {
     show_json(0, '无指定DNS('.$dnstype.')配置！');
 }
 $ip = '';
-if (isset($dnsconfig['toip']) && $dnsconfig['toip']) {
-    $ip = $dnsconfig['toip'];
+if (isset($lsopt['toip']) && $lsopt['toip']) {
+    $ip = $lsopt['toip'];
 }
 if(!$ip){
     $client = new Aws\Lightsail\LightsailClient([
@@ -200,7 +194,50 @@ switch ($dnstype) {
         }
     break;
     case "namecheap":
-            dump($ip);
+        $apiUser = $userName = $dnsconfig['username'];
+        $apiKey = $dnsconfig['key'];
+        if(!$dnsconfig['ip']){
+            if(is_file(ROOT_PATH.'namecheap.ip.txt')){
+                $clientIp = file_get_contents(ROOT_PATH.'namecheap.ip.txt');
+            }else{
+                $clientIp = get_server_ip();
+            }
+        }else{
+            $clientIp = $dnsconfig['ip'];
+        }
+        $returnType = 'array';
+        $ncDomainsDns = new  Namecheap\Domain\DomainsDns($apiUser, $apiKey, $userName, $clientIp, $returnType); 
+        $ncDomainsDns->setCurlOption(CURLOPT_SSL_VERIFYPEER, false); 
+        try {
+            $list = $ncDomainsDns->getHosts($domainfo->hostname, $domainfo->suffix);
+            $hostlist = $list['ApiResponse']['CommandResponse']['DomainDNSGetHostsResult']['host'];
+            if($list && $hostlist){
+                $i=1;
+                foreach($hostlist as $r){
+                    $up['name']['HostName'.$i] = $r['-Name'];
+                    $up['type']['RecordType'.$i] = $r['-Type'];
+                    $up['address']['Address'.$i] = $r['-Name']== $domainfo->subdomain ? $ip: $r['-Address'];
+                    $up['mxpref']['MXPref'.$i] = $r['-MXPref'];
+                    $up['ttl']['TTL'.$i] = $r['-Name']==$domainfo->subdomain ? '60': $r['-TTL'];
+                    $i++;
+                }
+                try {
+                    $ret = $ncDomainsDns->setHosts($domainfo->hostname, $domainfo->suffix,$up['name'],$up['type'],$up['address'], $up['mxpref'],null,$up['ttl']);
+                    $msg = $ret['ApiResponse']['Errors'];
+                    if(!$ret||$msg){
+                        show_json(0, '更新NameCheap的DNS记录出错！ ' . $msg);
+                    }else{
+                        show_json(1, array('ip' => $ip, 'host' => $ihost, 'reqhost' => $_GET['host']));
+                    }
+                } catch (Exception $e) {
+                    show_json(0, '更新NameCheap的DNS记录出错，请检查配置！ ' . ($e->getMessage() ? "Message: " . $e->getMessage() : ""));
+                }
+            }else{
+                show_json(0, 'NameCheap的DNS记录为空！' );
+            }
+        }catch (Exception $e) {
+            show_json(0, '无法获取NameCheap的DNS记录，请检查IP是否在列表中！ ' . ($e->getMessage() ? "Message: " . $e->getMessage() : ""));
+        }
     break;
 }
 
@@ -267,7 +304,7 @@ function show_json($status = 1, $return = null)
     if (defined('PUSHME_KEY')) {
         if ($status) {
             $title = $_ENV['ihost'] . "成功切换IP";
-            $content = "新IP地址：" . $return['ip']  . PHP_EOL . "解析域名：" . $return['host'] . PHP_EOL . ($return['host'] == $host ? "" : "请求域名：" . $host).PHP_EOL ."（成功更新IP并不意味可以正常访问，如约10分钟后无IP更新提示则说明已生效。期间可以测试访问）";
+            $content = "新IP地址：" . $return['ip']  . PHP_EOL . "请求标记：" . $return['host'] . PHP_EOL . ($return['host'] == $host ? "" : "解析域名：" . $host).PHP_EOL ."（成功更新IP并不意味可以正常访问，如约10分钟后无IP更新提示则说明已生效。期间可以测试访问）";
         } else {
             $title = $_ENV['ihost'] . "切换IP失败";
             $content = $return;
@@ -322,4 +359,40 @@ function pushme($title, $content = '', $key = '')
     $context = stream_context_create($opts); 
     return $result = file_get_contents('https://pushme.tedx.net/' . $key . '.send', false, $context);
 
+}
+
+
+/**
+ * 获取客户端IP地址
+ * @return string
+ */
+function get_client_ip() {
+    if(getenv('HTTP_CLIENT_IP')){
+        $client_ip=getenv('HTTP_CLIENT_IP');
+    }elseif(getenv('HTTP_X_FORWARDED_FOR')) {
+        $client_ip=getenv('HTTP_X_FORWARDED_FOR');
+    }elseif(getenv('REMOTE_ADDR')) {
+        $client_ip=getenv('REMOTE_ADDR');
+    }else{
+        $client_ip=$_SERVER['REMOTE_ADDR'];
+    }
+    return $client_ip;
+} 
+
+ 
+/**
+* 获取服务器端IP地址
+ * @return string
+ */
+function get_server_ip() {
+    if(isset($_SERVER)) {
+        if($_SERVER['SERVER_ADDR']) {
+            $server_ip=$_SERVER['SERVER_ADDR'];
+        }else{
+            $server_ip=$_SERVER['LOCAL_ADDR'];
+        }
+    }else{
+        $server_ip=getenv('SERVER_ADDR');
+    }
+    return $server_ip;
 }

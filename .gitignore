@@ -3,3 +3,5 @@ config.php
 vendor/
 composer.lock
 check.php
+namecheap.ip.txt
+nc.bak.txt

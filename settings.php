@@ -5,6 +5,7 @@ if (@file_exists("../config.php")) {
 } else {
 	require_once "config.php";
 }
+define('ROOT_PATH', dirname(__FILE__).'/');
 
 if (!defined('HOST_KEY') || !defined('HOST_MAIL')) {
 	exit(_('No HOST_KEY or HOST_MAIL defined in config.php .'));
