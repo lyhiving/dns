@@ -7,19 +7,23 @@ define('PUSHME_KEY', 'PUSH7dddddddddf3eaef'); //pushmekey
 // $tlo_path = '/'; // Optional. The installation path for this panel, ending with '/'. Required for HTTP/2 Push.
 // $is_debug = false; // Enable debug mode
 
-$_ENV['aws'] = array(
+$_ENV['config'] = array(
+    'token' => '94a08da1fecbb6e8b46990538c7b50b2', //md5 $_GET['token'] value, example value is token can be null
     'version' => '2016-11-28', //lightsail API date
     'credentials' => array(
         'key' => 'AWS_KEY',
         'secret' => 'AWS_secret'
     ),
-    'lightsail' =>array(
+    'items' =>array(
         'baidu.com' => array( //you can use a fake domain
             'realhost' => 'xxx.realdomain.com', //This is real domain
             'vpsid' => 'InstanceID', //Lightsail Instance ID
             'ipid'  => 'IPID', //Lightsail Static IP ID, Must be same region with Lightsai Instance
             'region' => 'ap-northeast-1', // Lightsail Region 
-            'dnstype' =>'cf' //realhost or domain dns type. Support cloudflare->cf, AWS -> aws
+            'dnstype' =>'cf', //realhost or domain dns type. Support cloudflare->cf, AWS -> aws
+            'callbacks' => array(//multi callbacks [DNS] stand for this site url, [token]\[ip]\[host]\[reqhost]\[errmsg]
+                '[DNS]/changeip.php?host=ons.no&token=[token]' 
+            )
         )
     )
 );

@@ -23,29 +23,39 @@ use Aws\Lightsail\LightsailClient;
 use Cloudflare\Zone\Dns;
 $extract = new LayerShifter\TLDExtract\Extract();
 
+$token = isset($_GET['token']) ? $_GET['token'] : 'token';
 $case = isset($_GET['case']) ? $_GET['case'] : 'lightsail';
+if($case && $case=='ping'){
+    exit('PONG!');
+}
+if($_ENV['config'] && $_ENV['config']['token']){
+    if(!$token || md5($token)!=$_ENV['config']['token']){
+        exit('Token Access Denied');
+    }
+}
+
 $host = isset($_GET['host']) ? strtolower($_GET['host']) : '';
 
 if (!$host) {
     show_json(0, $host.'host参数不能为空！');
 }
 
-if (!isset($_ENV['aws']) || !$_ENV['aws'] || !$_ENV['aws']['lightsail']) {
+if (!isset($_ENV['config']) || !$_ENV['config'] || !$_ENV['config']['items']) {
     show_json(0, $host.'无Lightsail服务器配置！');
 }
 
-if (!$_ENV['aws']['lightsail'][$host]) {
+if (!$_ENV['config']['items'][$host]) {
     show_json(0, $host.'无法找到指定服务器配置！');
 }
 
-$lsopt = $_ENV['aws']['lightsail'][$host];
+$lsopt = $_ENV['config']['items'][$host];
 $usefake = false;
 if (isset($lsopt['realhost']) && $lsopt['realhost']) {
     $host = $lsopt['realhost'];
     $usefake = true;
 }
 $dnstype = $lsopt['dnstype'];
-$callback = isset($lsopt['callback']) ? $lsopt['callback'] : '';
+$callbacks = isset($lsopt['callbacks']) ? $lsopt['callbacks'] : '';
 $dnsopt = $_ENV[$dnstype.'opt'];
 
 $_ENV['ihost'] = $ihost = $usefake ? $_GET['host'] : $host;
@@ -64,6 +74,9 @@ if (isset($dnsopt['default']) && $dnsopt['default']) {
 if (isset($dnsopt[$domain]) && $dnsopt[$domain]) {
     $dnsconfig = $dnsopt[$domain];
 }
+if($dnstype=='lightsail' && !$dnsconfig && $_ENV['config']['credentials']){//lightsail 允许重用配置
+    $dnsconfig = $_ENV['config']['credentials'];
+}
 
 if (!$dnsconfig) {
     show_json(0, '无指定DNS('.$dnstype.')配置！');
@@ -72,11 +85,12 @@ $ip = '';
 if (isset($lsopt['toip']) && $lsopt['toip']) {
     $ip = $lsopt['toip'];
 }
+
 if(!$ip){
     $client = new Aws\Lightsail\LightsailClient([
-        'version' => $_ENV['aws']['version'],
+        'version' => $_ENV['config']['version'],
         'region' => $lsopt['region'],
-        'credentials' => $_ENV['aws']['credentials'],
+        'credentials' => $_ENV['config']['credentials'],
     ]);
 
     try {
@@ -115,6 +129,33 @@ if (!$ip) {
 }
 
 switch ($dnstype) {
+    case "lightsail":
+        $client = new Aws\Lightsail\LightsailClient([
+            'version' => $_ENV['config']['version'],
+            'region' => 'us-east-1',
+            'credentials' => $dnsconfig,
+        ]);
+        try {
+            $result = $client->getDomain(array('domainName'=>$domain));
+            $domainEntries = $result['domain']['domainEntries'];
+            foreach($domainEntries as $r){
+                if($r['type']=='A' && $r['name']==$host){
+                    $r['target'] = $ip;
+                    $domainEntry = array('domainEntry'=>$r,'domainName'=>$domain);
+                    try {
+                        $ret = $client->UpdateDomainEntry($domainEntry);
+                        if($ret['operations'][0]['status']=='Succeeded'){
+                            show_json(1, array('ip' => $ip, 'host' => $ihost, 'reqhost' => $_GET['host']));
+                        }else{
+                            show_json(0, '更新Lightsail域名记录有误，服务器返回错误。');
+                        }
+                    } catch (AwsException $e1) {show_json(0, '更新Lightsail域名记录失败。Message: ' . $e1->getMessage());}
+                }
+            }
+        }catch (Exception $e) {
+            show_json(0, '无法获取Lightsail域名'.$domain.'的DNS记录，请确保连接的是us-east-1区域！ ' . ($e->getMessage() ? "Message: " . $e->getMessage() : ""));
+        }
+    break;
     case "cf":
         $client = new Cloudflare\Api($dnsconfig['email'], $dnsconfig['key']);
         $zones = new Cloudflare\Zone($client);
@@ -292,13 +333,14 @@ function dump($var, $label = null, $strict = true, $echo = true)
 
 function show_json($status = 1, $return = null)
 {
-    global $callback, $host;
-    if ($callback) { //回调就增加IP和hostname
-        if ($status) {
-            $cip = file_get_contents(str_replace(array("[ip]", "[host]", "[reqhost]"), array($return['ip'], $return['host'], $host), $callback));
-            $return['callback'] = $cip;
-        } else {
-            $cip = file_get_contents(str_replace(array("[errmsg]"), array($return), $callback));
+    global $callbacks, $host;
+    if ($callbacks) { //回调就增加IP和hostname
+        foreach($callbacks as $callback){
+            $url = str_replace(array("[DNS]", "[ip]", "[host]", "[reqhost]", "[token]","[errmsg]"), array('http://' . $_SERVER['HTTP_HOST'],$return['ip'], $return['host'], $host, $_ENV['config']['token'], $return), $callback);
+            $cip = file_get_contents($url);
+            if ($status) {
+                $return['callback'][] = $cip;
+            }
         }
     }
     if (defined('PUSHME_KEY')) {
