@@ -29,7 +29,7 @@ if($case && $case=='ping'){
     exit('PONG!');
 }
 if($_ENV['config'] && $_ENV['config']['token']){
-    if(!$token || md5($token)!=$_ENV['config']['token']){
+    if(!$token || ($token!=$_ENV['config']['token'] && md5($token)!=$_ENV['config']['token'])){
         exit('Token Access Denied');
     }
 }
