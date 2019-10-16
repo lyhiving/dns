@@ -21,6 +21,7 @@
         "jamesryanbell/cloudflare": "^1.11",
         "aws/aws-sdk-php": "^3.99",
         "layershifter/tld-extract": "^2.0",
-        "lyhiving/namecheap-sdk": "^1.0"
+        "lyhiving/namecheap-sdk": "^1.0",
+        "lyhiving/dnspod_api": "^3.0"
     }
 }
