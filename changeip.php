@@ -17,7 +17,7 @@ if (!defined('HOST_KEY')) {
     exit('Access Denied');
 }
 
-
+define('CLIENT_IP', get_client_ip());
 use Aws\Exception\AwsException;
 use Aws\Lightsail\LightsailClient;
 use Cloudflare\Zone\Dns;
@@ -178,7 +178,7 @@ switch ($dnstype) {
         }
         $change = $dns->create($ids->result[0]->id, 'A', $host, $ip, 120);
         if (!$change->success) {
-            show_json(0, '更新域名IP出错！IP: ' . $ip . ($usefake ? '' : ' Host: ' . $host) . ' ReqHost: ' . $_GET['host'] . " " . ($change->error ? "Message: " . $change->error : ""));
+            show_json(0, '更新域名IP出错！ IP: ' . $ip . ($usefake ? '' : ' Host: ' . $host) . ' ReqHost: ' . $_GET['host'] . " " . ($change->error ? "Message: " . $change->error : ""));
         }
         show_json(1, array('ip' => $ip, 'host' => $ihost, 'reqhost' => $_GET['host']));
     break;
@@ -346,10 +346,10 @@ function show_json($status = 1, $return = null)
     if (defined('PUSHME_KEY')) {
         if ($status) {
             $title = $_ENV['ihost'] . "成功切换IP";
-            $content = "新IP地址：" . $return['ip']  . PHP_EOL . "请求标记：" . $return['host'] . PHP_EOL . ($return['host'] == $host ? "" : "解析域名：" . $host).PHP_EOL ."（成功更新IP并不意味可以正常访问，如约10分钟后无IP更新提示则说明已生效。期间可以测试访问）";
+            $content = "请求来自：" . CLIENT_IP  . PHP_EOL."新IP地址：" . $return['ip']  . PHP_EOL . "请求标记：" . $return['host'] . PHP_EOL . ($return['host'] == $host ? "" : "解析域名：" . $host).PHP_EOL ."（成功更新IP并不意味可以正常访问，如约10分钟后无IP更新提示则说明已生效。期间可以测试访问）";
         } else {
             $title = $_ENV['ihost'] . "切换IP失败";
-            $content = $return;
+            $content = "请求来自：" . CLIENT_IP  . PHP_EOL.$return;
         }
         $pushret = pushme($title, $content);
         if($status){
@@ -438,3 +438,4 @@ function get_server_ip() {
     }
     return $server_ip;
 }
+
