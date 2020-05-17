@@ -2,24 +2,26 @@
 
 [Cloudflare Hosting Partner][1] 可以使用此项目为用户提供一个可视化的面板，可以让用户免费的使用 [CNAME 接入][2]。
 
+[cf.tlo.xyz][3] 是安装了这个面板的最新稳定版的网站，值得你的信任。
 
-增加了Lightsai切换IP自动同步到Cloudflare的功能。
+<blockquote>
+注意：[cf.tlo.xyz][3] 的 Host API key 似乎被 Cloudflare 停用了。因此，现在你不能在这个网站上使用密码登录，亦不能添加新的 CNAME 接入的域名。对于已经有 CNAME 接入的用户，依然可以通过 Global API Key（不是密码）的方式登录本站，管理自己域名下的 DNS 记录。
+</blockquote>
 
-**用法：** [你的网站地址]/changeip.php?host=sub.domain
+<blockquote>
+注意: <a href="https://cf.tlo.xyz">cf.tlo.xyz</a> 的 Host API key 已经被 Cloudflare 停用了。
 
+现在，所有 <a href="https://cf.tlo.xyz">cf.tlo.xyz</a> 用户都需要使用 Global API Key 进行登录。要添加新的 Cloudflare CNAME 接入域名，用户可以<a href="https://tloxygen.com/2020/04/cloudflare-faq/">使用 TlOxygen 虚拟主机上的 Cloudflare 插件</a>.
+</blockquote>
 
 ## 安装
-
-去掉众多组件，使用前请在根目录执行
-
-*composer install*
 
 如果你不想使用上述已经安装好了的面板，你可以在自己的服务器上安装。现有多种方式将其安装到服务器，[详情请参见 Wiki 中的安装方法][5]。
 
 ## 此面板的特性
 
 + 管理你的所有 DNS 记录。此面板使用了 [Cloudflare API v4][6]，所以支持各种格式的 DNS 记录。
-+ 高级统计。你可以查看**过去一整年的统计信息**，而不仅仅是一个月。
++ <del>高级统计。你可以查看**过去一整年的统计信息**，而不仅仅是一个月。</del>
 + 同时支持 NS 接入。此面板提供了 NS 接入信息，所以你可以随时切换到 Cloudflare DNS。此外，这个面板也支持 DNSSEC。
 + 同时支持 IP 接入。你可以看到 DNS 的 Anycast IPv4 和 IPv6 信息，这样你可以安全地在根域名下使用第三方 DNS。
 + 适配移动设备。
@@ -38,7 +40,7 @@
 
 + 更加灵活，因为你可以使用任何一个 DNS 提供商。
 + 将 Cloudflare 作为一个备份服务器，或者使用多个 CDN。
-+ 可以免费支持四级域名下的 SSL！例如像 `dev.project.example.com` 这样的域名，Cloudflare 也会自动签发 SSL 证书，这是因为 CNAME 接入签发的是 [SSL for SaaS][7]，它会自动的为每一个字域名签发证书。
++ 可以免费支持四级域名下的 SSL！例如像 `dev.project.example.com` 这样的域名，Cloudflare 也会自动签发 SSL 证书，这是因为 CNAME 接入签发的是 [SSL for SaaS][7]，它会自动地为每一个子域名签发证书。
 
 ## 使用 Cloudflare 的好处
 

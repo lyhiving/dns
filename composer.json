@@ -1,5 +1,5 @@
 {
-    "name": "ZE3kr/Cloudflare-CNAME-Setup",
+    "name": "ze3kr/cloudflare-cname-setup",
     "type": "project",
     "homepage": "https://github.com/ZE3kr/Cloudflare-CNAME-Setup",
     "description": "Cloudflare Partner Panel",
@@ -18,6 +18,9 @@
         "ext-curl": "*",
         "ext-gettext": "*",
         "ext-json": "*",
+        "pear/net_dns2": "*",
+        "components/jquery": "*",
+        "components/bootstrap": "*",
         "jamesryanbell/cloudflare": "^1.11",
         "aws/aws-sdk-php": "^3.99",
         "layershifter/tld-extract": "^2.0",
